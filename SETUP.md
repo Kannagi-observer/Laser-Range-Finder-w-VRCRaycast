@@ -64,7 +64,7 @@ Avatar Root
    - `LRF_Hit_On.anim`
    - `LRF_Hit_Off.anim`
 
-> **Note:** `LRFAnimationGenerator.cs` は `Editor/` フォルダに配置してください。
+> **Note:** `LRFAnimationGenerator.cs` および `LRFBlendTreeSetup.cs` は `Editor/` フォルダに配置してください。
 
 ---
 
@@ -76,21 +76,29 @@ Avatar Root
 |-----------|------|----------|
 | `LRF_Hit` | Bool | VRCRaycast が自動セット |
 | `LRF_Distance` | Float | VRCRaycast が自動セット |
+| `LRF_Ratio` | Float | VRCRaycast が自動セット |
 | `LRF_Active` | Bool | Expression Menu で制御 |
 
 ### Layer 構成
 
-#### Layer 1: LRF_HitDrive
+#### Layer 1: LRF_HitDrive (手動設定)
+
+BlendTreeではなくステートマシンで構成します。
 
 ```
 [Idle] --(LRF_Hit = true)--> [Hit_On]  : LRF_Hit_On.anim  (Loop)
        <-(LRF_Hit = false)-- [Hit_Off] : LRF_Hit_Off.anim (Loop)
 ```
 
-- Write Defaults: OFF
-- Transition Duration: 0
+| Transition 設定 | 値 |
+|-----------------|----|
+| Has Exit Time | OFF |
+| Duration | 0 |
+| Interruption Source | Any State |
 
-#### Layer 2: LRF_DistDrive
+- Write Defaults: **OFF**
+
+#### Layer 2: LRF_DistDrive (自動構築)
 
 ```
 BlendTree 1D
@@ -99,18 +107,33 @@ BlendTree 1D
   Clips     : LRF_Dist_000.anim (threshold=0) 〜 LRF_Dist_999.anim (threshold=999)
 ```
 
-- Write Defaults: OFF
-- このLayerはLRF_Hit=trueのときのみ動作するよう、LRF_HitDriveと組み合わせて制御
+- Write Defaults: **OFF**
 
-#### Layer 3: LRF_BeamScale
+#### Layer 3: LRF_BeamScale (自動構築)
 
 ```
 BlendTree 1D
   Parameter : LRF_Ratio
   Range     : 0 – 1
-  threshold 0 → Scale Z = 0    のキーフレームClip
-  threshold 1 → Scale Z = 1000 のキーフレームClip
+  threshold 0 → LRF_Beam_Min.anim (Scale Z = 0)
+  threshold 1 → LRF_Beam_Max.anim (Scale Z = 1000)
 ```
+
+- Write Defaults: **OFF**
+
+### BlendTree 自動構築
+
+Layer 2・3 は手動での1000クリップ登録を避けるためEditorスクリプトで自動構築します。
+
+1. `Assets/LRF/` に Animator Controller を作成し、名前を `LRF_AnimatorController` にする
+2. 上記の Parameters を追加する
+3. Unity メニューから `Tools > LRF > Setup BlendTrees` を実行
+   - `LRF_DistDrive` Layer に BlendTree 1D (LRF_Distance, 0–999, 1000クリップ) が構築される
+   - `LRF_BeamScale` Layer に BlendTree 1D (LRF_Ratio, 0–1) が構築される
+
+> **Note:** `LRF_BeamScale` に使用する `LRF_Beam_Min.anim` / `LRF_Beam_Max.anim` は手動で作成してください。
+> - `LRF_Beam_Min.anim`: LaserBeam の Scale Z = 0
+> - `LRF_Beam_Max.anim`: LaserBeam の Scale Z = 1000
 
 ---
 
